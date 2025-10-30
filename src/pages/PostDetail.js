@@ -38,7 +38,36 @@ export default function PostDetail(){
     );
   }
 
-  const paragraphs = post.body ? post.body.split('\n\n') : [];
+  // content will hold the post body text. If a post provides a bodyFile (public/.md),
+  // fetch it at runtime and use that text. Otherwise fall back to inline post.body.
+  const [content, setContent] = useState(post.body || '');
+
+  useEffect(() => {
+    let mounted = true;
+
+    if (post.bodyFile) {
+      // fetch markdown from public folder
+      fetch(post.bodyFile)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to load post body: ' + res.status);
+          return res.text();
+        })
+        .then(text => {
+          if (mounted) setContent(text);
+        })
+        .catch(err => {
+          console.error(err);
+          if (mounted) setContent('');
+        });
+    } else {
+      // inline body (already available)
+      setContent(post.body || '');
+    }
+
+    return () => { mounted = false; };
+  }, [post.bodyFile, post.body]);
+
+  const paragraphs = content ? content.split('\n\n') : [];
 
   const renderBlock = (blk, i) => {
     const trimmed = blk.trim();
@@ -203,7 +232,7 @@ export default function PostDetail(){
                   day: 'numeric'
                 })}</span>
                 <span>•</span>
-                <span>⏱️ {Math.ceil(post.body.length / 500)} phút đọc</span>
+                <span>⏱️ {Math.ceil((content || '').length / 500)} phút đọc</span>
               </div>
             )}
           </div>
